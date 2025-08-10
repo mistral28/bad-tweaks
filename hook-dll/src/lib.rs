@@ -69,12 +69,10 @@ fn set_entry_point(
     class_name: String,
     function_name: String,
     entry_args: String,
-    debug_mode: bool,
 ) {
     unsafe { (*ptr::addr_of!(ENTRY_POINT_CLASS)).set(Mutex::new(class_name)) }.unwrap();
     unsafe { (*ptr::addr_of!(ENTRY_POINT_FUNCTION_NAME)).set(Mutex::new(function_name)) }.unwrap();
     unsafe { (*ptr::addr_of!(ENTRY_POINT_ARGS)).set(Mutex::new(entry_args)) }.unwrap();
-    unsafe { (*ptr::addr_of!(DEBUG_MODE)).set(debug_mode) }.unwrap();
 }
 
 #[payload_procedure]

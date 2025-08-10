@@ -18,7 +18,6 @@ pub mod args;
 struct InjectorApp {
     progress: f32,
     progress_text: String,
-    debug_mode: bool,
 }
 
 impl Default for InjectorApp {
@@ -26,7 +25,6 @@ impl Default for InjectorApp {
         Self {
             progress: 0.0,
             progress_text: "IDLE".to_string(),
-            debug_mode: false,
         }
     }
 }
@@ -43,8 +41,6 @@ impl eframe::App for InjectorApp {
             if self.progress == 0.0 {
                 ui.label(&self.progress_text);
 
-                ui.checkbox(&mut self.debug_mode, "Debug mode");
-
                 if ui.button("Get free cosmetics").clicked() {
                     let pid = find_minecraft_process();
                     let Some(pid) = pid else {
@@ -56,7 +52,6 @@ impl eframe::App for InjectorApp {
                         "hook_dll.dll",
                         "org.cubewhy.TweakEntrypoint.init",
                         "",
-                        self.debug_mode,
                         |status_text, progress| {
                             self.progress_text = status_text.to_string();
                             self.progress = progress;
@@ -66,6 +61,7 @@ impl eframe::App for InjectorApp {
                             self.progress = 1.0;
                         }
                         Err(e) => {
+                            eprintln!("Failed to inject {e}");
                             self.progress_text = format!("Failed to inject: {e}");
                             self.progress = 0.0;
                         }
@@ -136,7 +132,6 @@ fn inject_to_process(
     dll_path: &str,
     entrypoint: &str,
     entry_args: &str,
-    debug_mode: bool,
     mut status_callback: impl FnMut(&str, f32) -> (),
 ) -> anyhow::Result<()> {
     let Ok(target_process) = OwnedProcess::from_pid(pid) else {
@@ -157,13 +152,7 @@ fn inject_to_process(
     // init dll
     status_callback("Init dll!", 0.5);
     println!("Init dll");
-    init_dll(
-        entrypoint,
-        entry_args,
-        debug_mode,
-        &syringe,
-        injected_payload,
-    )?;
+    init_dll(entrypoint, entry_args, &syringe, injected_payload)?;
 
     // now the dll hooked java
     // we can load classes into the JVM
@@ -186,7 +175,6 @@ fn inject_to_process(
 fn init_dll(
     entrypoint: &str,
     entry_args: &str,
-    debug_mode: bool,
     syringe: &Syringe,
     injected_payload: ProcessModule<BorrowedProcess<'_>>,
 ) -> anyhow::Result<()> {
@@ -199,7 +187,6 @@ fn init_dll(
             class_name: String,
             function_name: String,
             entry_args: String,
-            debug_mode: bool,
         ) -> ()>(injected_payload, "set_entry_point")
     }?
     .unwrap();
@@ -216,7 +203,6 @@ fn init_dll(
         &entry_class_name,
         &entry_func_name,
         &entry_args.to_string(),
-        &debug_mode,
     )?;
 
     Ok(())
