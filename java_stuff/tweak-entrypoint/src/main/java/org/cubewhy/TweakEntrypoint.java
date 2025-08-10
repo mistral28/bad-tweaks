@@ -1,18 +1,20 @@
 package org.cubewhy;
 
-import java.io.File;
+
+import org.cubewhy.badtweaks.managers.TweakManger;
+import org.cubewhy.badtweaks.tweaks.impl.CosmeticsTweak;
 
 @SuppressWarnings("unused")
 public class TweakEntrypoint {
     public static void init(String arg) throws Exception {
-        System.out.println("[Tweaker] Welcome to the tweaker");
-        System.out.println("[Tweaker] args: " + arg);
+        System.out.println("[BadTweaks] Welcome to the tweaker");
+        System.out.println("[BadTweaks] args: " + arg);
 
-        switch (arg) {
-            case "dumpclass":
-                File baseDir = new File(System.getProperty("user.home"), ".cubewhy/tweaks/dumped-classes");
-                new ClassDumper(baseDir).dumpAll();
-                break;
-        }
+        // init tweaks
+        TweakManger tweakManger = new TweakManger();
+        tweakManger.addTweak(new CosmeticsTweak());
+
+        // apply tweaks
+        tweakManger.applyTweaks();
     }
 }

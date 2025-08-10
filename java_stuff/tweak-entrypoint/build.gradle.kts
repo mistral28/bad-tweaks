@@ -16,7 +16,9 @@ repositories {
     mavenCentral()
 }
 
+// Note: 0dep is required, the agent cannot load classes correctly
 dependencies {
+    compileOnly("com.google.code.gson:gson:2.13.1")
 }
 
 tasks.withType<JavaCompile>().configureEach {
