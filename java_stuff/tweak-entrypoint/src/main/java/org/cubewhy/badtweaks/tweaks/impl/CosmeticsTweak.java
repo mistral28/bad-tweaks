@@ -43,10 +43,12 @@ public class CosmeticsTweak implements Tweak {
         List<Object> cosmeticsList = getCosmeticsList(cosmeticsStore);
 
         // add cosmetics to badlion cosmeticsList
+        cosmeticsList.clear();
         cosmeticsList.addAll(cosmeticsObjs);
 
         // add cosmetic names to favoriteCosmetics
         HashSet<String> set = getFavoriteCosmeticNameSet(badlionSettings);
+        set.clear();
         set.addAll(cosmeticsList
                 .stream().map(cos -> {
                     try {
