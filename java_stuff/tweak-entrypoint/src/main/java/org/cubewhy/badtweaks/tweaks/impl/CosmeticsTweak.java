@@ -53,20 +53,24 @@ public class CosmeticsTweak implements Tweak {
                 .stream().map(cos -> {
                     try {
                         return getCosmeticName(cos);
-                    } catch (InvocationTargetException | IllegalAccessException | NoSuchMethodException e) {
+                    } catch (InvocationTargetException | IllegalAccessException | NoSuchFieldException e) {
                         throw new RuntimeException(e);
                     }
                 }).toList());
 
         // clear favoriteCosmeticsIds
-        HashSet<String> favoriteCosmeticsIds = getFavoriteCosmeticsIds(badlionSettings);
+        HashSet<String> favoriteCosmeticsIds = getFavoriteCosmeticsIdsField(badlionSettings);
         favoriteCosmeticsIds.clear();
-
 
         // refresh cosmetics
         refreshCosmetics(badlionSettings);
+        refreshUi(badlionInstance);
+    }
 
-//        JOptionPane.showMessageDialog(null, "favoriteCosmeticsIds contains " + favoriteCosmeticsIds.size() + " items");
+    private void refreshUi(Object badlionInstance) throws NoSuchMethodException, InvocationTargetException, IllegalAccessException {
+        Class<?> badlionClass = badlionInstance.getClass();
+        Method methodRefreshUi = badlionClass.getDeclaredMethod("fB");
+        methodRefreshUi.invoke(badlionInstance);
     }
 
     @SuppressWarnings("unchecked")
@@ -81,7 +85,7 @@ public class CosmeticsTweak implements Tweak {
     }
 
     @SuppressWarnings("unchecked")
-    private HashSet<String> getFavoriteCosmeticsIds(Object badlionSettings) throws NoSuchFieldException, IllegalAccessException {
+    private HashSet<String> getFavoriteCosmeticsIdsField(Object badlionSettings) throws NoSuchFieldException, IllegalAccessException {
         // get the favoriteCosmeticsIds field
         Class<?> badlionSettingsClass = badlionSettings.getClass();
         Field fieldFavoriteCosmetics = badlionSettingsClass.getDeclaredField("favoriteCosmeticsIds");
@@ -91,11 +95,12 @@ public class CosmeticsTweak implements Tweak {
         return (HashSet<String>) fieldFavoriteCosmetics.get(badlionSettings);
     }
 
-    private String getCosmeticName(Object cosmetic) throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
+    private String getCosmeticName(Object cosmetic) throws InvocationTargetException, IllegalAccessException, NoSuchFieldException {
         Class<?> cosmeticClass = cosmetic.getClass();
-        Method methodGetName = cosmeticClass.getDeclaredMethod("getName");
+        Field nameField = cosmeticClass.getDeclaredField("name");
+        nameField.setAccessible(true);
         // call the method
-        return (String) methodGetName.invoke(cosmetic);
+        return (String) nameField.get(cosmetic);
     }
 
     private void refreshCosmetics(Object badlionSettings) throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
