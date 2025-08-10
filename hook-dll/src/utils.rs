@@ -23,10 +23,10 @@ pub unsafe fn load_class_bytes<'a>(
     jni.define_class(class_name, &class_loader_obj, class_bytes)
 }
 
-pub fn create_notification(message: &str) {
-    Notification::new()
-        .summary("Badlion tweaks")
-        .body(message)
-        .show()
-        .unwrap();
+pub fn create_notification(_message: &str) {
+    // Notification::new()
+    //     .summary("Badlion tweaks")
+    //     .body(message)
+    //     .show()
+    //     .unwrap();
 }
