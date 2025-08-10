@@ -9,6 +9,19 @@ bytes = "1.10.1"
 clap = { version = "4.5.43", features = ["derive"] }
 dll-syringe = "0.17.0"
 zip = "4.3.0"
+eframe = { version = "0.32.0", features = [
+    "default",
+    "__screenshot", # __screenshot is so we can dump a screenshot using EFRAME_SCREENSHOT_TO
+] }
+
+# For image support:
+egui_extras = { version = "0.32.0", features = ["default", "image"] }
+
+env_logger = { version = "0.11", default-features = false, features = [
+    "auto-color",
+    "humantime",
+] }
+tasklist = "0.3.1"
 
 [build-dependencies]
 winres = "0.1.12"

@@ -6,46 +6,177 @@ use std::{
 };
 
 use bytes::Bytes;
-use clap::Parser;
 use dll_syringe::{
     Syringe,
     process::{BorrowedProcess, OwnedProcess, ProcessModule},
 };
-
-use crate::args::ProgramArgs;
+use eframe::egui::{self, OpenUrl, ProgressBar};
 
 pub mod args;
 
+#[derive(Debug)]
+struct InjectorApp {
+    progress: f32,
+    progress_text: String,
+    debug_mode: bool,
+}
+
+impl Default for InjectorApp {
+    fn default() -> Self {
+        Self {
+            progress: 0.0,
+            progress_text: "IDLE".to_string(),
+            debug_mode: false,
+        }
+    }
+}
+
+impl eframe::App for InjectorApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.image(egui::include_image!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/banner.png"
+            )));
+
+            ui.label("Note: Please navigate to the cosmetics menu before you inject");
+            if self.progress == 0.0 {
+                ui.label(&self.progress_text);
+
+                ui.checkbox(&mut self.debug_mode, "Debug mode");
+
+                if ui.button("Get free cosmetics").clicked() {
+                    let pid = find_minecraft_process();
+                    let Some(pid) = pid else {
+                        self.progress_text = "Cannot found badlion process".to_string();
+                        return;
+                    };
+                    match inject_to_process(
+                        pid,
+                        "hook_dll.dll",
+                        "org.cubewhy.TweakEntrypoint.init",
+                        "",
+                        self.debug_mode,
+                        |status_text, progress| {
+                            self.progress_text = status_text.to_string();
+                            self.progress = progress;
+                        },
+                    ) {
+                        Ok(_) => {
+                            self.progress = 1.0;
+                        }
+                        Err(e) => {
+                            self.progress_text = format!("Failed to inject: {e}");
+                            self.progress = 0.0;
+                        }
+                    };
+                };
+            } else {
+                let progress = ProgressBar::new(self.progress).text(&self.progress_text);
+                ui.add(progress);
+            }
+
+            if ui.link("lunarclient.top").clicked() {
+                OpenUrl::new_tab("https://lunarclient.top");
+            }
+        });
+    }
+}
+
+fn find_minecraft_process() -> Option<u32> {
+    for p in tasklist::Tasklist::new().unwrap() {
+        let pname = p.get_pname();
+        if pname != "javaw.exe" {
+            continue;
+        }
+
+        let Ok(cmdline) = p.get_cmd_params() else {
+            continue;
+        };
+        if cmdline.contains("--badlionPid") {
+            // this is the badlion process
+            let pid = p.get_pid();
+            return Some(pid);
+        }
+    }
+
+    None
+}
+
 fn main() -> anyhow::Result<()> {
     // resolve args
-    let args = ProgramArgs::parse();
-    let Ok(target_process) = OwnedProcess::from_pid(args.pid) else {
-        eprintln!("Cannot found process with pid {}", args.pid);
+    // let args = ProgramArgs::parse();
+
+    println!("Cracked by earthsworth LLC in 1 second");
+    println!("lunarclient.top");
+
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default().with_inner_size([640.0, 480.0]),
+        ..Default::default()
+    };
+    eframe::run_native(
+        "Earthsworth Injector",
+        options,
+        Box::new(|cc| {
+            // This gives us image support:
+            egui_extras::install_image_loaders(&cc.egui_ctx);
+
+            Ok(Box::<InjectorApp>::default())
+        }),
+    )
+    .unwrap();
+
+    // inject_to_process(args.pid, &args.dll, &args.entrypoint, &args.args)?;
+
+    Ok(())
+}
+
+fn inject_to_process(
+    pid: u32,
+    dll_path: &str,
+    entrypoint: &str,
+    entry_args: &str,
+    debug_mode: bool,
+    mut status_callback: impl FnMut(&str, f32) -> (),
+) -> anyhow::Result<()> {
+    let Ok(target_process) = OwnedProcess::from_pid(pid) else {
+        eprintln!("Cannot found process with pid {}", pid);
         process::exit(1);
     };
-
-    println!("Injecting to process {}", args.pid);
+    println!("Injecting to process {}", pid);
+    status_callback(&format!("Injecting to process {pid}"), 0.2);
     let syringe = Syringe::for_process(target_process);
 
     // inject to process
-    let injected_payload = syringe.inject(&args.dll).unwrap();
+    let injected_payload = syringe.inject(dll_path).unwrap();
+    status_callback("Attached to progress", 0.4);
     println!("Completed injected");
 
     // now we injected to the game
 
     // init dll
+    status_callback("Init dll!", 0.5);
     println!("Init dll");
-    init_dll(&args, &syringe, injected_payload)?;
+    init_dll(
+        entrypoint,
+        entry_args,
+        debug_mode,
+        &syringe,
+        injected_payload,
+    )?;
 
     // now the dll hooked java
     // we can load classes into the JVM
+    status_callback("Loading class to memory!", 0.6);
     println!("Loading classes to memory");
     cache_classes(&syringe, injected_payload)?;
 
+    status_callback("Finally! Loading tweaks!", 0.8);
     println!("Loading tweaks...");
     // call dll to invoke the entrypoint in org.cubewhy.Tweaker class
     install_tweak(&syringe, injected_payload)?;
 
+    status_callback("Completed! Love from earthsworth", 1.0);
     // eject the payload from the target (optional)
     // syringe.eject(injected_payload)?;
 
@@ -53,7 +184,9 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn init_dll(
-    args: &ProgramArgs,
+    entrypoint: &str,
+    entry_args: &str,
+    debug_mode: bool,
     syringe: &Syringe,
     injected_payload: ProcessModule<BorrowedProcess<'_>>,
 ) -> anyhow::Result<()> {
@@ -62,23 +195,29 @@ fn init_dll(
     remote_init_func.call()?;
 
     let remote_set_entry_point_func = unsafe {
-        syringe.get_payload_procedure::<fn(class_name: String, function_name: String, entry_args: String) -> ()>(
-            injected_payload,
-            "set_entry_point",
-        )
+        syringe.get_payload_procedure::<fn(
+            class_name: String,
+            function_name: String,
+            entry_args: String,
+            debug_mode: bool,
+        ) -> ()>(injected_payload, "set_entry_point")
     }?
     .unwrap();
 
     // parse entrypoint
     // org.cubewhy.[Entrypoint] -> org/cubewhy, Entrypoint
-    let splitted: Vec<_> = args.entrypoint.split(".").map(|s| s.to_string()).collect();
+    let splitted: Vec<_> = entrypoint.split(".").map(|s| s.to_string()).collect();
     let entry_func_name = splitted.last().unwrap();
-    let entry_class_name = args
-        .entrypoint
+    let entry_class_name = entrypoint
         .trim_suffix(format!(".{entry_func_name}").as_str())
         .replace(".", "/")
         .to_string();
-    remote_set_entry_point_func.call(&entry_class_name, &entry_func_name, &args.args)?;
+    remote_set_entry_point_func.call(
+        &entry_class_name,
+        &entry_func_name,
+        &entry_args.to_string(),
+        &debug_mode,
+    )?;
 
     Ok(())
 }

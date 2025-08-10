@@ -21,6 +21,7 @@ static mut CACHED_CLASSES: OnceCell<Mutex<Vec<(String, Bytes)>>> =
 static mut ENTRY_POINT_CLASS: OnceCell<Mutex<String>> = OnceCell::new();
 static mut ENTRY_POINT_FUNCTION_NAME: OnceCell<Mutex<String>> = OnceCell::new();
 static mut ENTRY_POINT_ARGS: OnceCell<Mutex<String>> = OnceCell::new();
+static mut DEBUG_MODE: OnceCell<bool> = OnceCell::with_value(false);
 
 fn dll_main() -> anyhow::Result<()> {
     Ok(())
@@ -64,10 +65,16 @@ pub extern "system" fn DllMain(
 }
 
 #[payload_procedure]
-fn set_entry_point(class_name: String, function_name: String, entry_args: String) {
+fn set_entry_point(
+    class_name: String,
+    function_name: String,
+    entry_args: String,
+    debug_mode: bool,
+) {
     unsafe { (*ptr::addr_of!(ENTRY_POINT_CLASS)).set(Mutex::new(class_name)) }.unwrap();
     unsafe { (*ptr::addr_of!(ENTRY_POINT_FUNCTION_NAME)).set(Mutex::new(function_name)) }.unwrap();
     unsafe { (*ptr::addr_of!(ENTRY_POINT_ARGS)).set(Mutex::new(entry_args)) }.unwrap();
+    unsafe { (*ptr::addr_of!(DEBUG_MODE)).set(debug_mode) }.unwrap();
 }
 
 #[payload_procedure]
