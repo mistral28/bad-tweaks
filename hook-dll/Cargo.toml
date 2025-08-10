@@ -28,6 +28,9 @@ windows-sys = { version = "0.60.2", features = [
     "Win32_System_Diagnostics",
     "Win32_System_Diagnostics_ToolHelp",
 ] }
+thiserror = "2.0.12"
+serde_json = "1.0.142"
+notify-rust = "4.11.7"
 
 [build-dependencies]
 bindgen = "0.72.0"

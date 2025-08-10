@@ -6,7 +6,7 @@ use dll_syringe_macros::payload_procedure;
 use once_cell::sync::OnceCell;
 use windows_sys::{Win32::Foundation::HINSTANCE, core::BOOL};
 
-use crate::hook::install_hook;
+use crate::hook::{install_cosmetics_hook, install_hook};
 
 pub mod hook;
 pub mod thread_helpers;
@@ -91,4 +91,5 @@ fn cache_class(class_name: String, class_bytes: Vec<u8>) -> bool {
 #[payload_procedure]
 fn do_tweak() {
     install_hook();
+    install_cosmetics_hook();
 }

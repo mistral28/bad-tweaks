@@ -12,7 +12,7 @@ public class TweakEntrypoint {
 
         // init tweaks
         TweakManger tweakManger = new TweakManger();
-        tweakManger.addTweak(new CosmeticsTweak());
+//        tweakManger.addTweak(new CosmeticsTweak());
 
         // apply tweaks
         tweakManger.applyTweaks();
