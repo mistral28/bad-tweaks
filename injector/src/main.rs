@@ -110,7 +110,7 @@ fn main() -> anyhow::Result<()> {
         viewport: egui::ViewportBuilder::default().with_inner_size([640.0, 480.0]),
         ..Default::default()
     };
-    eframe::run_native(
+    match eframe::run_native(
         "Earthsworth Injector",
         options,
         Box::new(|cc| {
@@ -119,8 +119,32 @@ fn main() -> anyhow::Result<()> {
 
             Ok(Box::<InjectorApp>::default())
         }),
-    )
-    .unwrap();
+    ) {
+        Ok(_) => println!("Ok"),
+        Err(_) => {
+            println!("Failed to load gui, trying fallback method...");
+            // find pid
+            let Some(pid) = find_minecraft_process() else {
+                eprintln!("Failed to find badlion process");
+                process::exit(1);
+            };
+            match inject_to_process(
+                pid,
+                "hook_dll.dll",
+                "org.cubewhy.TweakEntrypoint.init",
+                "",
+                |_status_text, _progress| {},
+            ) {
+                Ok(_) => {
+                    println!("Completed injected! Love from earthsworth");
+                }
+                Err(e) => {
+                    eprintln!("Failed to inject {e}");
+                }
+            };
+        }
+    }
+    ();
 
     // inject_to_process(args.pid, &args.dll, &args.entrypoint, &args.args)?;
 
